@@ -17,10 +17,18 @@
     },
 
     "android": {
+      "package": "com.irandisilva.vivamais",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/viva-mais-adaptive-foreground.png",
         "backgroundColor": "#0F6F5D"
       }
+    },
+
+    "ios": {
+      "bundleIdentifier": "com.irandisilva.vivamais",
+      "buildNumber": "1",
+      "supportsTablet": true
     },
 
     "plugins": [
@@ -42,6 +50,13 @@
 
     "experiments": {
       "typedRoutes": true
+    },
+
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "78647eb0-5fe1-437f-bb68-98b37472eb9c"
+      }
     }
   }
 }
