@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { DEMO_MODE, SUPABASE_CONFIG_ERROR, supabase } from '@/lib/supabase';
 import { Profile, UserRole } from '@/types/domain';
 
-const DEMO_ROLE_KEY = 'viva-mais-demo-role-v5';
+const DEMO_ROLE_KEY = 'viva-mais-demo-role-v6';
 
 type AuthContextValue = {
   loading: boolean;
@@ -42,10 +42,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   async function loadProfile(userId: string) {
-    const { data, error } = await supabase.from('profiles').select('id,full_name,role,unit:units(name),organization:organizations(name)').eq('id', userId).maybeSingle();
+    const { data, error } = await supabase.from('profiles').select('id,full_name,role,sector,unit:units(name),organization:organizations(name)').eq('id', userId).maybeSingle();
     if (error) throw error;
     if (!data) throw new Error('Perfil não encontrado. Execute schema.sql/seed.sql ou a migration correspondente e configure-demo-users.sql no Supabase.');
-    setProfile({ id: data.id, full_name: data.full_name, role: data.role, unit_name: (data as any).unit?.name ?? null, organization_name: (data as any).organization?.name ?? null });
+    setProfile({ id: data.id, full_name: data.full_name, role: data.role, sector: (data as any).sector ?? null, unit_name: (data as any).unit?.name ?? null, organization_name: (data as any).organization?.name ?? null });
   }
 
   useEffect(() => {

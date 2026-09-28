@@ -1,107 +1,61 @@
-# Supabase — Viva Mais MVP v5
+# Supabase — Viva Mais MVP v6
 
-## Se você já está usando a v4
+## Atualizar da v5
+No SQL Editor execute todo o arquivo:
 
-**Não rode `schema.sql` novamente.** Execute somente:
+`supabase/migration_v5_to_v6.sql`
 
-1. `SQL Editor` → `New query`;
-2. abra `supabase/migration_v4_to_v5.sql`;
-3. copie todo o arquivo;
-4. clique em `Run`.
+Ele preserva usuários e dados existentes.
 
-Essa migration adiciona as RPCs de inscrição idempotente e de check-in diário sem apagar dados existentes.
+## Instalação limpa
+Execute:
 
-## Se você ainda está na v3
+1. `supabase/schema.sql`
+2. `supabase/seed.sql`
+3. configure os quatro usuários demo.
 
-Execute primeiro:
+## Configurar os quatro usuários demo automaticamente
+Crie o arquivo local:
 
-1. `supabase/migration_v3_to_v4.sql`;
-2. depois `supabase/migration_v4_to_v5.sql`.
+```bash
+cp .env.admin.example .env.admin
+```
 
-## Se estiver criando o banco do zero
+Preencha:
 
-Execute nesta ordem:
+```env
+SUPABASE_SERVICE_ROLE_KEY=SUA_SERVICE_ROLE
+DEMO_PASSWORD=VivaMais@2026!
+```
 
-1. `supabase/schema.sql`;
-2. `supabase/seed.sql`;
-3. crie os quatro usuários em `Authentication > Users`;
-4. execute `supabase/configure-demo-users.sql`.
+Depois:
+
+```bash
+npm run setup:demo-users
+```
+
+O script cria ou atualiza os quatro usuários, confirma os e-mails, redefine a senha e sincroniza role/unidade/setor. `.env.admin` é ignorado pelo Git.
 
 ## Usuários do MVP
-
 - `trabalhador.demo@vivamais.com`
 - `profissional.demo@vivamais.com`
 - `gestao.demo@vivamais.com`
 - `admin.demo@vivamais.com`
 
-Senha sugerida somente para a apresentação:
-
-`VivaMais@2026!`
-
-Defina manualmente a senha em `Authentication > Users` e marque/garanta `Auto Confirm User`.
+Senha sugerida: `VivaMais@2026!`
 
 ## Quando o login retornar HTTP 400
+Primeiro confirme que o `.env` aponta para o MESMO projeto Supabase onde os usuários foram criados.
 
 Rode:
 
 `supabase/diagnostico_auth.sql`
 
-Confira:
+Confira `email_confirmed_at`, `banned_until`, `role`, `active` e `sector`.
 
-- `email_confirmed_at` preenchido;
-- `banned_until` nulo;
-- `active = true`;
-- papel correto em `profiles`.
+Se quiser eliminar dúvida de senha/e-mail confirmado, rode novamente `npm run setup:demo-users`.
 
-Se o e-mail já estiver confirmado e o login continuar falhando, redefina a senha pelo Dashboard. O Supabase não permite consultar a senha atual.
-
-## Validar perfis
-
-```sql
-select u.email, p.full_name, p.role, un.name as unidade
-from public.profiles p
-join auth.users u on u.id = p.id
-left join public.units un on un.id = p.unit_id
-order by p.role;
-```
-
-## Validar inscrições
-
-```sql
-select b.id, u.email, s.title, sl.starts_at, b.status
-from public.bookings b
-join auth.users u on u.id=b.user_id
-join public.service_slots sl on sl.id=b.slot_id
-join public.services s on s.id=sl.service_id
-order by b.created_at desc;
-```
-
-## Validar check-ins
-
-```sql
-select u.email, w.occurred_on, w.mood, w.energy, w.stress, w.privacy_notice_acknowledged_at
-from public.wellbeing_checkins w
-join auth.users u on u.id=w.user_id
-order by w.occurred_on desc;
-```
-
-## Chaves do aplicativo
-
-No Supabase use `Connect > Framework` ou `Project Settings > API Keys`.
-
-Use somente:
-
-- Project URL;
-- Publishable key (`sb_publishable_...`).
-
-Nunca use no cliente:
-
-- `postgresql://...`;
-- senha do banco;
-- `service_role`;
-- `sb_secret_...`.
-
-`.env`:
+## .env do aplicativo
 
 ```env
 EXPO_PUBLIC_DEMO_MODE=false
@@ -109,18 +63,34 @@ EXPO_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_SUA_CHAVE
 ```
 
-Depois reinicie com cache limpo:
+Nunca exponha `service_role`, `sb_secret_...`, senha do banco ou connection string no app.
+
+Depois:
 
 ```bash
 npx expo start --web -c
 ```
 
-## Hidratação
-
-A tabela continua sendo:
+## Validar perfis
 
 ```sql
-select * from public.hydration_preferences;
+select u.email,p.full_name,p.role,p.sector,p.active,un.name as unidade
+from public.profiles p
+join auth.users u on u.id=p.id
+left join public.units un on un.id=p.unit_id
+order by p.role;
 ```
 
-Para o fluxo de e-mail leia `docs/HIDRATACAO_E_NOTIFICACOES.md`.
+## Validar imagens importadas
+No Dashboard do Supabase veja `Storage > viva-mais-media`.
+
+## Validar conteúdos do profissional
+
+```sql
+select c.title,c.category,c.format,c.created_by,c.external_url,c.media_url,c.published
+from public.contents c
+order by c.created_at desc;
+```
+
+## Validar painel gerencial
+Faça login como gestão e teste filtros por período, unidade e setor. A RPC gerencial retorna somente dados agregados.

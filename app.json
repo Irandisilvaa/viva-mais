@@ -2,19 +2,44 @@
   "expo": {
     "name": "Viva Mais",
     "slug": "viva-mais",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "scheme": "vivamais",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
+    "icon": "./assets/brand/viva-mais-app-icon.png",
+
+    "splash": {
+      "image": "./assets/brand/viva-mais-splash-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F8F6"
+    },
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/viva-mais-adaptive-foreground.png",
+        "backgroundColor": "#0F6F5D"
+      }
+    },
+
     "plugins": [
       "expo-router",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Viva Mais acessa suas fotos somente quando você decide importar uma imagem para uma atividade ou conteúdo."
+        }
+      ]
     ],
+
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/brand/favicon.png"
     },
+
     "experiments": {
       "typedRoutes": true
     }

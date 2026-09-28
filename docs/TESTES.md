@@ -97,3 +97,40 @@ Depois de publicar a Edge Function e ativar Cron:
 - verificar logs da Edge Function;
 - verificar recebimento;
 - desativar o canal e confirmar que não há novos envios.
+
+## 11. Cenários adicionados na v6
+
+### Imagens
+- profissional cria atividade usando imagem sugerida;
+- profissional importa uma imagem do dispositivo;
+- confirmar arquivo no bucket `viva-mais-media`;
+- confirmar que outro profissional não consegue sobrescrever/remover arquivo de outro usuário;
+- administrador consegue usar imagem sugerida/importada em conteúdo/campanha.
+
+### Conteúdo educativo pelo profissional
+- publicar conteúdo com título, resumo, corpo, categoria e formato;
+- publicar com link externo;
+- publicar com link de mídia complementar;
+- abrir na biblioteca do trabalhador;
+- confirmar que links abrem corretamente;
+- confirmar que `created_by` é o profissional autenticado.
+
+### Gestão
+- filtrar por 7/30/90/365 dias;
+- filtrar por unidade;
+- filtrar por setor;
+- combinar unidade + setor;
+- verificar gráficos de trabalhadores/agendamentos/presença por setor;
+- confirmar que filtros vazios não quebram a tela;
+- confirmar que nenhum nome individual é retornado pela RPC.
+
+### Hidratação
+- salvar configuração e confirmar banner inline de sucesso;
+- confirmar que o texto resume meta, horário e canal;
+- alterar a configuração e salvar novamente.
+
+### Admin demo
+- executar `npm run setup:demo-users`;
+- confirmar e-mail `admin.demo@vivamais.com`;
+- confirmar `role=admin`, `active=true`, `sector=TI`;
+- login com a senha definida em `DEMO_PASSWORD`.

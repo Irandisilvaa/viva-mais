@@ -14,6 +14,8 @@ const filters = [
   { key: 'nutrition', label: 'Nutrição' },
   { key: 'movement', label: 'Movimento' },
   { key: 'wellbeing', label: 'Bem-estar' },
+  { key: 'mental_health', label: 'Saúde mental' },
+  { key: 'ergonomics', label: 'Ergonomia' },
 ];
 
 export default function Contents() {

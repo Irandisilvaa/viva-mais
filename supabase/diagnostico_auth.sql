@@ -8,6 +8,7 @@ select
   u.banned_until,
   p.role,
   p.active,
+  p.sector,
   un.name as unidade
 from auth.users u
 left join public.profiles p on p.id = u.id
@@ -26,6 +27,7 @@ order by u.email;
 -- role: worker / professional / manager / admin
 -- active: true
 --
--- Se email_confirmed_at estiver nulo, confirme/recrie o usuario pelo Dashboard
--- em Authentication > Users usando a opcao Auto Confirm User.
--- Nao altere auth.users diretamente para definir senha.
+-- Se algum usuario estiver ausente, não confirmado ou com senha desconhecida,
+-- a v6 inclui um script local seguro para recriar/confirmar e redefinir os 4 acessos:
+-- npm run setup:demo-users
+-- Ele exige SUPABASE_SERVICE_ROLE_KEY apenas em .env.admin (ignorado pelo Git).

@@ -1,4 +1,4 @@
--- Viva Mais MVP v5 - dados demonstrativos. Nao use dados reais de trabalhadores.
+-- Viva Mais MVP v6 - dados demonstrativos. Nao use dados reais de trabalhadores.
 
 insert into public.organizations (id,name,slug) values
 ('00000000-0000-0000-0000-000000000001','Secretaria de Estado da Saúde de Sergipe','ses-se')

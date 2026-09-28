@@ -1,4 +1,4 @@
--- Viva Mais MVP v4
+-- Viva Mais MVP v6
 -- ATENCAO: este script recria SOMENTE o dominio public do Viva Mais e preserva auth.users.
 -- Use no ambiente MVP/demo. Nao execute em producao sem backup e estrategia de migracao.
 
@@ -69,6 +69,7 @@ create table public.profiles (
   organization_id uuid references public.organizations(id),
   unit_id uuid references public.units(id),
   full_name text not null,
+  sector text,
   role public.app_role not null default 'worker',
   active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -140,6 +141,9 @@ create table public.contents (
   official_guide boolean not null default false,
   source_label text,
   source_url text,
+  external_url text,
+  media_url text,
+  created_by uuid references public.profiles(id) on delete set null,
   audience text not null default 'all',
   published boolean not null default false,
   published_at timestamptz,
@@ -512,6 +516,15 @@ create policy absence_prof_read on public.booking_absence_justifications for sel
 create policy absence_admin_read on public.booking_absence_justifications for select to authenticated using (public.is_admin());
 
 create policy contents_read on public.contents for select to authenticated using ((organization_id is null or organization_id = public.current_user_organization()) and published = true);
+create policy contents_prof_insert on public.contents for insert to authenticated with check (
+  public.current_user_role() = 'professional' and organization_id = public.current_user_organization() and created_by = auth.uid()
+);
+create policy contents_prof_update on public.contents for update to authenticated using (
+  public.current_user_role() = 'professional' and created_by = auth.uid() and organization_id = public.current_user_organization()
+) with check (created_by = auth.uid() and organization_id = public.current_user_organization());
+create policy contents_prof_delete on public.contents for delete to authenticated using (
+  public.current_user_role() = 'professional' and created_by = auth.uid() and organization_id = public.current_user_organization()
+);
 create policy contents_admin_all on public.contents for all to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy progress_self_read on public.content_progress for select to authenticated using (user_id = auth.uid());
 create policy progress_self_insert on public.content_progress for insert to authenticated with check (user_id = auth.uid());
@@ -588,49 +601,104 @@ begin
 end; $$;
 
 -- Gestao: somente agregados, nunca identificadores individuais.
-create or replace function public.get_manager_dashboard(p_days integer default 30)
+create or replace function public.get_manager_filter_options()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare org_id uuid; units_json jsonb; sectors_json jsonb;
+begin
+  if not public.is_manager_or_admin() then raise exception 'Acesso restrito a gestao'; end if;
+  org_id := public.current_user_organization();
+  select coalesce(jsonb_agg(jsonb_build_object('id',u.id,'name',u.name) order by u.name),'[]'::jsonb)
+    into units_json from public.units u where u.organization_id=org_id and u.active=true;
+  select coalesce(jsonb_agg(sector order by sector),'[]'::jsonb) into sectors_json
+    from (select distinct trim(p.sector) sector from public.profiles p where p.organization_id=org_id and p.role='worker' and p.active=true and nullif(trim(p.sector),'') is not null) q;
+  return jsonb_build_object('units',units_json,'sectors',sectors_json);
+end; $$;
+
+create or replace function public.get_manager_dashboard(p_days integer default 30, p_unit_id uuid default null, p_sector text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  org_id uuid; total_bookings integer; attended integer; content_views integer;
-  campaign_participants integer; wellbeing_responses integer; average_mood numeric; by_category jsonb;
+  org_id uuid; total_bookings integer; attended integer; no_show integer; content_views integer;
+  campaign_participants integer; wellbeing_responses integer; average_mood numeric;
+  active_workers integer; units_count integer; sectors_count integer;
+  by_category jsonb; by_sector jsonb; workers_sector jsonb; attendance_sector jsonb;
 begin
   if not public.is_manager_or_admin() then raise exception 'Acesso restrito a gestao'; end if;
   if p_days not in (7,30,90,365) then p_days := 30; end if;
   org_id := public.current_user_organization();
 
-  select count(*) filter (where b.status <> 'cancelled'), count(*) filter (where b.status='attended')
-  into total_bookings, attended
+  select count(*)::integer, count(distinct p.unit_id)::integer, count(distinct nullif(trim(p.sector),''))::integer
+  into active_workers, units_count, sectors_count
+  from public.profiles p
+  where p.organization_id=org_id and p.role='worker' and p.active=true
+    and (p_unit_id is null or p.unit_id=p_unit_id)
+    and (p_sector is null or p.sector=p_sector);
+
+  select count(*) filter (where b.status <> 'cancelled')::integer,
+         count(*) filter (where b.status='attended')::integer,
+         count(*) filter (where b.status='no_show')::integer
+  into total_bookings, attended, no_show
   from public.bookings b join public.profiles p on p.id=b.user_id
-  where p.organization_id=org_id and b.created_at >= now() - make_interval(days=>p_days);
+  where p.organization_id=org_id and b.created_at >= now() - make_interval(days=>p_days)
+    and (p_unit_id is null or p.unit_id=p_unit_id)
+    and (p_sector is null or p.sector=p_sector);
 
-  select count(*) into content_views from public.content_progress cp join public.profiles p on p.id=cp.user_id
-  where p.organization_id=org_id and cp.last_accessed_at >= now() - make_interval(days=>p_days);
+  select count(*)::integer into content_views from public.content_progress cp join public.profiles p on p.id=cp.user_id
+  where p.organization_id=org_id and cp.last_accessed_at >= now() - make_interval(days=>p_days)
+    and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector);
 
-  select count(*) into campaign_participants from public.campaign_participations cp join public.profiles p on p.id=cp.user_id
-  where p.organization_id=org_id and cp.joined_at >= now() - make_interval(days=>p_days);
+  select count(*)::integer into campaign_participants from public.campaign_participations cp join public.profiles p on p.id=cp.user_id
+  where p.organization_id=org_id and cp.joined_at >= now() - make_interval(days=>p_days)
+    and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector);
 
-  select count(*), case when count(*) >= 5 then round(avg(w.mood)::numeric,1) else null end
+  select count(*)::integer, case when count(*) >= 5 then round(avg(w.mood)::numeric,1) else null end
   into wellbeing_responses, average_mood
   from public.wellbeing_checkins w join public.profiles p on p.id=w.user_id
-  where p.organization_id=org_id and w.occurred_on >= current_date - p_days;
+  where p.organization_id=org_id and w.occurred_on >= current_date - p_days
+    and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector);
 
-  select coalesce(jsonb_agg(jsonb_build_object('label',label,'value',value) order by value desc),'[]'::jsonb)
-  into by_category from (
-    select case s.category when 'nutrition' then 'Nutricao' when 'physical_activity' then 'Movimento' when 'ergonomics' then 'Ergonomia' when 'mental_health' then 'Saude mental' else 'Bem-estar' end label,
+  select coalesce(jsonb_agg(jsonb_build_object('label',label,'value',value) order by value desc),'[]'::jsonb) into by_category from (
+    select case s.category when 'nutrition' then 'Nutrição' when 'physical_activity' then 'Movimento' when 'ergonomics' then 'Ergonomia' when 'mental_health' then 'Saúde mental' else 'Bem-estar' end label,
            count(*)::integer value
     from public.bookings b join public.service_slots sl on sl.id=b.slot_id join public.services s on s.id=sl.service_id join public.profiles p on p.id=b.user_id
     where p.organization_id=org_id and b.status <> 'cancelled' and b.created_at >= now() - make_interval(days=>p_days)
+      and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector)
     group by s.category
+  ) q;
+
+  select coalesce(jsonb_agg(jsonb_build_object('label',label,'value',value) order by value desc),'[]'::jsonb) into by_sector from (
+    select coalesce(nullif(trim(p.sector),''),'Não informado') label, count(*)::integer value
+    from public.bookings b join public.profiles p on p.id=b.user_id
+    where p.organization_id=org_id and b.status <> 'cancelled' and b.created_at >= now() - make_interval(days=>p_days)
+      and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector)
+    group by coalesce(nullif(trim(p.sector),''),'Não informado')
+  ) q;
+
+  select coalesce(jsonb_agg(jsonb_build_object('label',label,'value',value) order by value desc),'[]'::jsonb) into workers_sector from (
+    select coalesce(nullif(trim(p.sector),''),'Não informado') label, count(*)::integer value
+    from public.profiles p where p.organization_id=org_id and p.role='worker' and p.active=true
+      and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector)
+    group by coalesce(nullif(trim(p.sector),''),'Não informado')
+  ) q;
+
+  select coalesce(jsonb_agg(jsonb_build_object('label',label,'value',value,'total',total,'attended',attended) order by value desc),'[]'::jsonb) into attendance_sector from (
+    select coalesce(nullif(trim(p.sector),''),'Não informado') label,
+      case when count(*) filter (where b.status <> 'cancelled')=0 then 0 else round((count(*) filter (where b.status='attended')::numeric / count(*) filter (where b.status <> 'cancelled')::numeric)*100)::integer end value,
+      count(*) filter (where b.status <> 'cancelled')::integer total,
+      count(*) filter (where b.status='attended')::integer attended
+    from public.bookings b join public.profiles p on p.id=b.user_id
+    where p.organization_id=org_id and b.created_at >= now() - make_interval(days=>p_days)
+      and (p_unit_id is null or p.unit_id=p_unit_id) and (p_sector is null or p.sector=p_sector)
+    group by coalesce(nullif(trim(p.sector),''),'Não informado')
   ) q;
 
   return jsonb_build_object(
     'total_bookings',coalesce(total_bookings,0),
-    'attendance_rate',case when coalesce(total_bookings,0)=0 then 0 else round((attended::numeric/total_bookings::numeric)*100)::integer end,
-    'content_views',coalesce(content_views,0),
-    'campaign_participants',coalesce(campaign_participants,0),
-    'wellbeing_responses',coalesce(wellbeing_responses,0),
-    'wellbeing_average',average_mood,
-    'bookings_by_category',by_category
+    'attendance_rate',case when coalesce(total_bookings,0)=0 then 0 else round((coalesce(attended,0)::numeric/total_bookings::numeric)*100)::integer end,
+    'absence_rate',case when coalesce(total_bookings,0)=0 then 0 else round((coalesce(no_show,0)::numeric/total_bookings::numeric)*100)::integer end,
+    'content_views',coalesce(content_views,0), 'campaign_participants',coalesce(campaign_participants,0),
+    'wellbeing_responses',coalesce(wellbeing_responses,0), 'wellbeing_average',average_mood,
+    'active_workers',coalesce(active_workers,0), 'units_count',coalesce(units_count,0), 'sectors_count',coalesce(sectors_count,0),
+    'bookings_by_category',by_category, 'bookings_by_sector',by_sector, 'workers_by_sector',workers_sector, 'attendance_by_sector',attendance_sector
   );
 end; $$;
 
@@ -669,12 +737,33 @@ grant execute on function public.current_user_role() to authenticated;
 grant execute on function public.current_user_organization() to authenticated;
 grant execute on function public.get_professional_slot_attendees(uuid) to authenticated;
 grant execute on function public.set_booking_attendance(uuid, public.booking_status) to authenticated;
-grant execute on function public.get_manager_dashboard(integer) to authenticated;
+grant execute on function public.get_manager_filter_options() to authenticated;
+grant execute on function public.get_manager_dashboard(integer, uuid, text) to authenticated;
 grant execute on function public.admin_set_user_role(uuid, public.app_role, uuid) to authenticated;
 
 revoke execute on function public.get_professional_slot_attendees(uuid) from public, anon;
 revoke execute on function public.set_booking_attendance(uuid, public.booking_status) from public, anon;
-revoke execute on function public.get_manager_dashboard(integer) from public, anon;
+revoke execute on function public.get_manager_filter_options() from public, anon;
+revoke execute on function public.get_manager_dashboard(integer, uuid, text) from public, anon;
 revoke execute on function public.admin_set_user_role(uuid, public.app_role, uuid) from public, anon;
+
+
+-- Bucket público para capas/mídias importadas por profissionais e administradores.
+insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
+values ('viva-mais-media','viva-mais-media',true,8388608,array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set public=true,file_size_limit=8388608,allowed_mime_types=array['image/jpeg','image/png','image/webp'];
+
+drop policy if exists viva_mais_media_insert on storage.objects;
+drop policy if exists viva_mais_media_update on storage.objects;
+drop policy if exists viva_mais_media_delete on storage.objects;
+create policy viva_mais_media_insert on storage.objects for insert to authenticated with check (
+  bucket_id='viva-mais-media' and public.current_user_role() in ('professional','admin') and (storage.foldername(name))[1]=auth.uid()::text
+);
+create policy viva_mais_media_update on storage.objects for update to authenticated using (
+  bucket_id='viva-mais-media' and (public.is_admin() or (storage.foldername(name))[1]=auth.uid()::text)
+) with check (bucket_id='viva-mais-media' and (public.is_admin() or (storage.foldername(name))[1]=auth.uid()::text));
+create policy viva_mais_media_delete on storage.objects for delete to authenticated using (
+  bucket_id='viva-mais-media' and (public.is_admin() or (storage.foldername(name))[1]=auth.uid()::text)
+);
 
 -- O seed cria a organizacao; a sincronizacao deve ser executada DEPOIS do seed.

@@ -24,6 +24,7 @@ export default function ContentDetail() {
       <Text style={[styles.title, mobile && styles.titleMobile]}>{item.title}</Text>
       <Text style={[styles.excerpt, mobile && styles.excerptMobile]}>{item.excerpt}</Text>
       <View style={[styles.article, mobile && styles.articleMobile]}><Text style={styles.body}>{item.body}</Text></View>
+      {item.external_url || item.media_url ? <View style={styles.linksCard}><Text style={styles.linksTitle}>Materiais complementares</Text><View style={styles.linksRow}>{item.external_url ? <AnimatedPressable onPress={() => Linking.openURL(item.external_url!)} style={styles.linkButton}><Ionicons name="open-outline" size={17} color={colors.primary}/><Text style={styles.linkButtonText}>Abrir link externo</Text></AnimatedPressable> : null}{item.media_url ? <AnimatedPressable onPress={() => Linking.openURL(item.media_url!)} style={styles.linkButton}><Ionicons name="images-outline" size={17} color={colors.primary}/><Text style={styles.linkButtonText}>Abrir mídia complementar</Text></AnimatedPressable> : null}</View></View> : null}
       {item.source_label && <View style={[styles.source, mobile && styles.sourceMobile]}><Ionicons name="link-outline" size={19} color={colors.primary} /><View style={styles.sourceTextWrap}><Text style={styles.sourceTitle}>Referência do conteúdo</Text><Text style={styles.sourceText}>{item.source_label}</Text></View>{item.source_url ? <AnimatedPressable onPress={() => Linking.openURL(item.source_url!)} style={[styles.sourceButton, mobile && styles.sourceButtonMobile]}><Text style={styles.sourceButtonText}>Abrir</Text></AnimatedPressable> : null}</View>}
       <View style={styles.disclaimer}><Ionicons name="medical-outline" size={19} color={colors.textMuted} /><Text style={styles.disclaimerText}>Conteúdo de promoção e educação em saúde. Não substitui avaliação ou orientação individual de profissional habilitado.</Text></View>
     </Page>
@@ -43,6 +44,11 @@ const styles = StyleSheet.create({
   article: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg, padding: 23 },
   articleMobile: { padding: 17 },
   body: { color: colors.text, fontSize: 15, lineHeight: 25 },
+  linksCard: { gap: 10, padding: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md },
+  linksTitle: { color: colors.text, fontWeight: '900', fontSize: 13 },
+  linksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  linkButton: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: colors.primarySoft },
+  linkButtonText: { color: colors.primaryDark, fontWeight: '900', fontSize: 11 },
   source: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.primarySoft, borderRadius: radii.md, padding: 14 },
   sourceMobile: { flexWrap: 'wrap' },
   sourceTextWrap: { flex: 1, minWidth: 180 },

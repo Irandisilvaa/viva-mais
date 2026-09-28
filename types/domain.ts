@@ -5,6 +5,7 @@ export type Profile = {
   full_name: string;
   role: UserRole;
   unit_name?: string | null;
+  sector?: string | null;
   organization_name?: string | null;
 };
 
@@ -68,10 +69,12 @@ export type AdminUser = {
   role: UserRole;
   unit_id?: string | null;
   unit_name?: string | null;
+  sector?: string | null;
   active: boolean;
 };
 
 export type ContentCategory = 'nutrition' | 'movement' | 'wellbeing' | 'mental_health' | 'ergonomics';
+export type ContentFormat = 'article' | 'recipe' | 'guide' | 'video' | 'audio';
 
 export type LearningContent = {
   id: string;
@@ -79,12 +82,15 @@ export type LearningContent = {
   excerpt: string;
   body: string;
   category: ContentCategory;
-  format: 'article' | 'recipe' | 'guide' | 'video' | 'audio';
+  format: ContentFormat;
   duration_minutes: number;
   image_url: string;
   official_guide: boolean;
   source_label?: string | null;
   source_url?: string | null;
+  external_url?: string | null;
+  media_url?: string | null;
+  created_by?: string | null;
 };
 
 export type Campaign = {
@@ -112,14 +118,29 @@ export type BookingCreationResult = {
   created: boolean;
 };
 
+export type MetricItem = { label: string; value: number };
+export type AttendanceMetricItem = { label: string; value: number; total?: number; attended?: number };
+
 export type DashboardData = {
   total_bookings: number;
   attendance_rate: number;
+  absence_rate: number;
   content_views: number;
   campaign_participants: number;
   wellbeing_responses: number;
   wellbeing_average: number | null;
-  bookings_by_category: { label: string; value: number }[];
+  active_workers: number;
+  units_count: number;
+  sectors_count: number;
+  bookings_by_category: MetricItem[];
+  bookings_by_sector: MetricItem[];
+  workers_by_sector: MetricItem[];
+  attendance_by_sector: AttendanceMetricItem[];
+};
+
+export type ManagerFilterOptions = {
+  units: { id: string; name: string }[];
+  sectors: string[];
 };
 
 export type HydrationChannel = 'app' | 'email' | 'both' | 'off';

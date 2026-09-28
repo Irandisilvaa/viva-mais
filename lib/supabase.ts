@@ -33,7 +33,7 @@ function buildClient() {
     {
       auth: {
         ...(Platform.OS !== 'web' ? { storage: AsyncStorage } : {}),
-        storageKey: 'viva-mais-auth-v5',
+        storageKey: 'viva-mais-auth-v6',
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,

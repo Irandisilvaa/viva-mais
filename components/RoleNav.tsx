@@ -9,6 +9,7 @@ const byRole = {
   professional: [
     {label:'Visão geral',href:'/profissional',icon:'grid-outline'},
     {label:'Atividades e agenda',href:'/profissional/atividades',icon:'calendar-outline'},
+    {label:'Conteúdos educativos',href:'/profissional/conteudos',icon:'library-outline'},
     {label:'Presenças',href:'/profissional/presencas',icon:'people-outline'},
   ],
   manager: [{label:'Painel gerencial',href:'/gestao',icon:'bar-chart-outline'}],
