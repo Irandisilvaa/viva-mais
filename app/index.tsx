@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   heroImage: { flex: 1, minHeight: 560, borderRadius: 30, overflow: 'hidden', justifyContent: 'flex-end', padding: 22, ...shadow },
   heroImageStack: { minHeight: 410 },
   heroImageRadius: { borderRadius: 30 },
-  imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,50,42,.18)' },
+  imageOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,50,42,.18)' },
   imageCard: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: 'rgba(255,255,255,.94)', padding: 16, borderRadius: radii.lg },
   imageCardIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
   imageCardTitle: { color: colors.text, fontWeight: '900', fontSize: 14 },

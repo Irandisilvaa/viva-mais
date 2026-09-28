@@ -84,7 +84,34 @@ export async function getAdminUsers():Promise<AdminUser[]>{
 }
 export async function adminSetRole(userId:string,role:UserRole){if(DEMO_MODE){await wait();return;}const {error}=await supabase.rpc('admin_set_user_role',{p_user_id:userId,p_role:role,p_unit_id:null});if(error)throw error;}
 export async function adminCreateContent(input:{title:string;excerpt:string;body:string;category:string;format:string;duration_minutes:number;image_url:string}){if(DEMO_MODE){await wait();return;}const {data:u}=await supabase.auth.getUser();if(!u.user)throw new Error('Sessão expirada.');const {data:p,error:pe}=await supabase.from('profiles').select('organization_id').eq('id',u.user.id).single();if(pe)throw pe;const {error}=await supabase.from('contents').insert({...input,organization_id:p.organization_id,published:true,published_at:new Date().toISOString(),official_guide:false,audience:'all'});if(error)throw error;}
-export async function adminCreateCampaign(input:{title:string;description:string;starts_at:string;ends_at:string;image_url:string}){if(DEMO_MODE){await wait();return;}const {data:u}=await supabase.auth.getUser();const {data:p}=await supabase.from('profiles').select('organization_id').eq('id',u.user!.id).single();const {error}=await supabase.from('campaigns').insert({...input,organization_id:p.organization_id,cta_label:'Participar',active:true});if(error)throw error;}
+export async function adminCreateCampaign(input:{title:string;description:string;starts_at:string;ends_at:string;image_url:string}){
+  if(DEMO_MODE){
+    await wait();
+    return;
+  }
+
+  const {data:u,error:userError}=await supabase.auth.getUser();
+  if(userError) throw userError;
+  if(!u.user) throw new Error('Sessão expirada.');
+
+  const {data:p,error:profileError}=await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id',u.user.id)
+    .single();
+
+  if(profileError) throw profileError;
+  if(!p?.organization_id) throw new Error('Organização do usuário não encontrada.');
+
+  const {error}=await supabase.from('campaigns').insert({
+    ...input,
+    organization_id:p.organization_id,
+    cta_label:'Participar',
+    active:true
+  });
+
+  if(error) throw error;
+}
 
 const defaultHydrationPreferences: HydrationPreferences = {
   daily_goal_ml: 2000,
